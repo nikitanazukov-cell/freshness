@@ -1,0 +1,3 @@
+# Standard assignment setup: core plus Albumentations.
+-r requirements-core.txt
+albumentations==2.0.8

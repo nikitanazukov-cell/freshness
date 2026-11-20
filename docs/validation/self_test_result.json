@@ -1,0 +1,42 @@
+{
+  "created_at": "2026-11-13T11:54:48+00:00",
+  "status": "PASSED",
+  "scope": "Synthetic integration test only; not evidence of freshness classification accuracy.",
+  "augmentations": "torchvision",
+  "split": {
+    "created_at": "2026-11-13T11:54:46+00:00",
+    "seed": 42,
+    "requested_fractions": {
+      "train": 0.7,
+      "val": 0.15,
+      "test": 0.15
+    },
+    "counts": {
+      "train": {
+        "FRESH": 8,
+        "MINOR_DEFECT": 8,
+        "SPOILED": 8
+      },
+      "val": {
+        "FRESH": 2,
+        "MINOR_DEFECT": 2,
+        "SPOILED": 2
+      },
+      "test": {
+        "FRESH": 2,
+        "MINOR_DEFECT": 2,
+        "SPOILED": 2
+      }
+    },
+    "groups": 18,
+    "unique_images": 36,
+    "removed_exact_duplicates": 0,
+    "note": "Exact duplicates detected. Near-duplicates require correct specimen grouping."
+  },
+  "train_epochs": 2,
+  "checkpoint_bytes": 6206039,
+  "pipeline_mean_ms": 8.823361249994832,
+  "pipeline_p95_ms": 11.633563299994874,
+  "research_acceptance_forced_false": true,
+  "artifacts_note": "QA artifacts were generated outside the delivery archive. Recreate with main.py self-test."
+}

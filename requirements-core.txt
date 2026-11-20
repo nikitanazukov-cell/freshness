@@ -1,0 +1,6 @@
+# Install the torch/torchvision CPU pair first; see README.md.
+torch==2.10.0
+torchvision==0.25.0
+numpy>=2.0,<3
+Pillow>=11.1,<13
+opencv-python-headless>=4.11,<5

@@ -1,0 +1,30 @@
+test_albumentations_transform (test_core.CoreTests.test_albumentations_transform) ... skipped 'Albumentations is not installed'
+test_checkpoint_class_order_checked (test_core.CoreTests.test_checkpoint_class_order_checked) ... ok
+test_checkpoint_roundtrip_and_no_download (test_core.CoreTests.test_checkpoint_roundtrip_and_no_download) ... ok
+test_conflicting_duplicate_labels_rejected (test_core.CoreTests.test_conflicting_duplicate_labels_rejected) ... ok
+test_eval_and_fallback_transforms (test_core.CoreTests.test_eval_and_fallback_transforms) ... ok
+test_exact_duplicates_removed (test_core.CoreTests.test_exact_duplicates_removed) ... ok
+test_existing_output_not_overwritten (test_core.CoreTests.test_existing_output_not_overwritten) ... ok
+test_extra_files_detected (test_core.CoreTests.test_extra_files_detected) ... ok
+test_grayscale_unicode_and_exif (test_core.CoreTests.test_grayscale_unicode_and_exif) ... ok
+test_group_leakage_rejected (test_core.CoreTests.test_group_leakage_rejected) ... ok
+test_groups_spanning_multiple_labels (test_core.CoreTests.test_groups_spanning_multiple_labels) ... ok
+test_inference_without_network_socket (test_core.CoreTests.test_inference_without_network_socket) ... ok
+test_invalid_image_rejected (test_core.CoreTests.test_invalid_image_rejected) ... ok
+test_invalid_threshold_rejected (test_core.CoreTests.test_invalid_threshold_rejected) ... ok
+test_letterbox_preserves_aspect (test_core.CoreTests.test_letterbox_preserves_aspect) ... ok
+test_local_initial_weights_branch (test_core.CoreTests.test_local_initial_weights_branch) ... ok
+test_metrics (test_core.CoreTests.test_metrics) ... ok
+test_minimum_three_groups_per_class (test_core.CoreTests.test_minimum_three_groups_per_class) ... ok
+test_missing_checkpoint_rejected (test_core.CoreTests.test_missing_checkpoint_rejected) ... ok
+test_missing_class_rejected (test_core.CoreTests.test_missing_class_rejected) ... ok
+test_modified_file_detected (test_core.CoreTests.test_modified_file_detected) ... ok
+test_predictions_and_batch_artifacts (test_core.CoreTests.test_predictions_and_batch_artifacts) ... Обработано 2/2; ошибок 1
+ok
+test_stratified_groups_and_repeatability (test_core.CoreTests.test_stratified_groups_and_repeatability) ... ok
+test_transparency_uses_neutral_background (test_core.CoreTests.test_transparency_uses_neutral_background) ... ok
+
+----------------------------------------------------------------------
+Ran 24 tests in 2.585s
+
+OK (skipped=1)

@@ -1,0 +1,9 @@
+{
+  "status": "PASSED",
+  "checks": [
+    "health",
+    "offline_form",
+    "valid_upload",
+    "invalid_upload"
+  ]
+}

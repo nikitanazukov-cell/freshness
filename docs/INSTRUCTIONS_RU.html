@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Freshness NIR — инструкция по установке и применению</title>
+<style>
+:root{color-scheme:light}
+*{box-sizing:border-box}body{margin:0;background:#edf2f6;color:#182b3f;font:16px/1.65 system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+header{background:#122b41;color:white;padding:42px max(24px,calc((100% - 1200px)/2))}
+header p{max-width:900px;color:#d4e2ee;margin:12px 0 0}header h1{font-size:32px;line-height:1.2;margin:0}
+.kicker{letter-spacing:.14em;font-size:12px;color:#aac5dc;margin-bottom:10px}
+.layout{max-width:1250px;margin:28px auto;display:grid;grid-template-columns:230px minmax(0,1fr);gap:24px;padding:0 20px}
+nav{position:sticky;top:20px;align-self:start;background:white;border:1px solid #dfe7ee;border-radius:10px;padding:15px}
+nav a{display:block;padding:9px 10px;color:#244f77;text-decoration:none;border-radius:6px}nav a:hover{background:#edf3f8}
+article{min-width:0}section{overflow-wrap:anywhere;background:white;border:1px solid #dfe7ee;border-radius:10px;margin-bottom:24px;padding:30px;scroll-margin-top:20px}
+section h1{font-size:27px;line-height:1.3;margin-top:0}h2{font-size:23px;margin:32px 0 10px;line-height:1.3}
+h3{font-size:19px}p{margin:12px 0}a{color:#1a5e94;overflow-wrap:anywhere}
+table{border-collapse:collapse;width:100%;font-size:14px;margin:20px 0;display:block;overflow:auto}
+th,td{text-align:left;padding:10px 12px;vertical-align:top;border:1px solid #dce5ed}th{background:#edf3f8}
+pre{background:#132d43;color:#f4f8fb;border-radius:8px;padding:17px;overflow:auto;font:13px/1.65 Consolas,monospace}
+code{font-family:Consolas,monospace;font-size:.9em}p code,td code,li code{background:#edf2f6;padding:2px 5px;border-radius:4px}
+blockquote{border-left:4px solid #d58a21;background:#fff7e7;padding:10px 20px;margin:20px 0}
+li{margin:6px 0}footer{padding:12px 24px 36px;text-align:center;color:#64798b;font-size:13px}
+@media(max-width:850px){.layout{display:block}nav{position:static;display:flex;flex-wrap:wrap;margin-bottom:20px}section{padding:20px}header{padding:28px 20px}header h1{font-size:27px}}
+@media print{body{background:white;font-size:11pt}.layout{display:block;margin:0;padding:0}nav{display:none}header{background:white;color:black;padding:15px}header p{color:#333}section{border:0;padding:12px;break-before:page}section:first-child{break-before:auto}pre{white-space:pre-wrap;background:#eee;color:black}table{font-size:9pt}a{color:black}}
+</style>
+</head>
+<body>
+<header><div class="kicker">НИР · ПРОГРАММНЫЙ ПРОЕКТ · ВЕРСИЯ 1.0</div>
+<h1>Свежесть овощей и фруктов по фото</h1>
+<p>Полная инструкция: необходимые программы, установка, подготовка данных, обучение, локальное распознавание и проверка результатов.</p>
+<p><strong>В поставке — программа. Реальные фотографии и обученная на них модель добавляются в ходе выполнения работы.</strong></p>
+</header>
+<div class="layout"><nav><a href="#start">Установка и запуск</a><a href="#data">Данные и разметка</a><a href="#method">Устройство программы</a><a href="#problems">Устранение ошибок</a><a href="#tests">Что проверено</a><a href="#sources">Источники</a></nav><article><section id="start"><h1>Freshness NIR — оценка свежести по фотографии</h1>
+<p>Программная часть НИР: MobileNetV3-Small, три класса свежести, обучение, локальный CPU-инференс, оконный интерфейс, JSON, фотографии с подписями и отчёты.</p>
+<p><strong>Статус поставки:</strong> исходный код и технические тесты готовы. Реальный датасет и модель, обученная распознавать свежесть, в архив не включены. Чтобы получить такую модель, нужно добавить размеченные фотографии и выполнить обучение. Точность ≥ 75% должна быть измерена на ваших отложенных данных, а не предполагаться заранее. Технический self-test использует искусственные картинки и не является результатом НИР.</p>
+<h2>1. Что реализовано</h2>
+<table>
+<thead>
+<tr>
+  <th>Возможность</th>
+  <th>Команда / результат</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>Проверка среды и архитектуры</td>
+  <td><code>doctor</code></td>
+</tr>
+<tr>
+  <td>Ручная разметка фото</td>
+  <td><code>label</code>, отдельное окно</td>
+</tr>
+<tr>
+  <td>Разделение примерно 70/15/15 по независимым образцам</td>
+  <td><code>prepare</code></td>
+</tr>
+<tr>
+  <td>Проверка точных дубликатов и пересечения групп</td>
+  <td><code>audit</code></td>
+</tr>
+<tr>
+  <td>Transfer learning из ImageNet, 25 эпох по умолчанию</td>
+  <td><code>train</code></td>
+</tr>
+<tr>
+  <td>Один файл или целая папка</td>
+  <td><code>predict</code></td>
+</tr>
+<tr>
+  <td>Accuracy, macro-F1, precision/recall, матрица ошибок</td>
+  <td><code>evaluate</code></td>
+</tr>
+<tr>
+  <td>Измерение скорости на CPU, batch=1</td>
+  <td><code>benchmark</code></td>
+</tr>
+<tr>
+  <td>Оконный интерфейс без браузера и интернета</td>
+  <td><code>gui</code>, <code>start_gui.bat</code></td>
+</tr>
+<tr>
+  <td>Необязательный локальный HTTP API</td>
+  <td><code>serve</code></td>
+</tr>
+<tr>
+  <td>Технический сквозной тест</td>
+  <td><code>self-test</code></td>
+</tr>
+<tr>
+  <td>23 пройденные проверки и 1 дополнительная проверка Albumentations</td>
+  <td><code>python -m unittest discover -s tests -v</code></td>
+</tr>
+</tbody>
+</table>
+<p>Классы всегда идут в одном порядке: <code>FRESH</code>, <code>MINOR_DEFECT</code>, <code>SPOILED</code>. Уверенность — максимальное значение softmax; также сохраняются оценки всех трёх классов. При confidence &lt; 0.65 выводится предложение ручной проверки. Порог настраивается и не является медицинским или санитарным нормативом.</p>
+<h2>2. Что установить</h2>
+<p><strong>Основной вариант: Windows 10/11, обычный 64-разрядный CPython 3.13.</strong> В установщике Python должны быть включены pip, Python Launcher и Tcl/Tk. Не выбирайте embeddable-архив или экспериментальный free-threaded Python.</p>
+<table>
+<thead>
+<tr>
+  <th>Программа / компонент</th>
+  <th>Обязательность</th>
+  <th>Для чего</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>Python 3.13 x64</td>
+  <td>Да</td>
+  <td>Запуск проекта</td>
+</tr>
+<tr>
+  <td>PowerShell или командная строка Windows</td>
+  <td>Уже есть в Windows</td>
+  <td>Команды подготовки, обучения и проверки</td>
+</tr>
+<tr>
+  <td>Tcl/Tk / tkinter</td>
+  <td>Для оконного интерфейса</td>
+  <td>Обычно устанавливается вместе с полным Python</td>
+</tr>
+<tr>
+  <td>Браузер</td>
+  <td>Для удобного просмотра HTML</td>
+  <td>Открывает сохранённые локальные отчёты</td>
+</tr>
+<tr>
+  <td>Редактор кода / IDE</td>
+  <td>Необязательно</td>
+  <td>Просмотр и изменение исходников</td>
+</tr>
+<tr>
+  <td>Excel или аналогичная программа</td>
+  <td>Необязательно</td>
+  <td>CSV; HTML доступен без Excel</td>
+</tr>
+<tr>
+  <td>GPU, CUDA, Docker, Anaconda, база данных</td>
+  <td>Не нужны для CPU-варианта</td>
+  <td>Не устанавливайте их ради этого проекта</td>
+</tr>
+</tbody>
+</table>
+<p>Библиотеки не нужно устанавливать как отдельные приложения: установочный скрипт поставит <code>torch</code>, <code>torchvision</code>, <code>numpy</code>, <code>Pillow</code>, <code>opencv-python-headless</code> и <code>albumentations</code>. Для необязательного API дополнительно нужны FastAPI, Uvicorn и python-multipart.</p>
+<p>В проекте согласованы <code>torch==2.10.0</code> и <code>torchvision==0.25.0</code>. Основная установка использует CPU-сборки. Albumentations закреплена на версии 2.0.8; альтернативные аугментации torchvision тоже реализованы.</p>
+<p>Ориентир по заданию: CPU от 4 ядер, 4 ГБ RAM минимум и 8 ГБ предпочтительно; 10–30 ГБ диска с учётом фотографий и копий выборок. Реальное время работы зависит от компьютера, разрешения фото и числа потоков.</p>
+<h2>3. Установка в Windows</h2>
+<p>Распакуйте <strong>весь</strong> архив, например в <code>C:\Projects\Freshness_NIR</code>. Не запускайте файлы прямо внутри ZIP.</p>
+<p>Самый простой способ — двойной щелчок по <code>install_windows.bat</code>. Он создаёт <code>.venv</code>, устанавливает CPU-библиотеки и выполняет <code>doctor</code>. Для первоначальной установки нужен интернет.</p>
+<p>Ручной вариант, из PowerShell в папке проекта:</p>
+<pre><code class="language-powershell">py -3.13 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install torch==2.10.0 torchvision==0.25.0 --index-url https://download.pytorch.org/whl/cpu
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe main.py doctor
+</code></pre>
+<p>Мы обращаемся непосредственно к Python внутри <code>.venv</code>; запускать <code>Activate.ps1</code> и менять политику безопасности PowerShell не требуется.</p>
+<p>При использовании обычного Python 3.11 или 3.12 замените только первую команду, например на <code>py -3.12 -m venv .venv</code>. Автоматический <code>.bat</code> ориентирован именно на 3.13. Проверки в поставке выполнены на Python 3.13.5/Linux, а не на вашем Windows-компьютере.</p>
+<h2>4. Сначала проверить программу без настоящего датасета</h2>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe main.py self-test
+</code></pre>
+<p>Команда сама создаст небольшие искусственные картинки, разделит их, выполнит две тренировочные эпохи и проверит весь путь до JSON, CSV, HTML, изображений с подписями и измерения скорости.</p>
+<p>Результаты будут в <code>outputs/self_test</code>. Модель из этой папки помечена <code>smoke_test=True</code>; её нельзя использовать в качестве модели свежести или предъявлять её accuracy как результат исследования. Итоговая исследовательская приёмка для неё всегда <code>False</code>.</p>
+<p>По умолчанию self-test использует аугментации torchvision. После установки Albumentations можно отдельно проверить второй движок:</p>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe main.py self-test --augmentations albumentations --output outputs/self_test_albumentations
+</code></pre>
+<p>Повторный запуск в непустую папку запрещён: выберите другое имя <code>--output</code>.</p>
+<h2>5. Подготовить реальные фотографии</h2>
+<p>В архиве уже есть пустые каталоги:</p>
+<pre><code class="language-text">data/raw/
+    FRESH/
+    MINOR_DEFECT/
+    SPOILED/
+</code></pre>
+<p>Разложите реальные фото по этим трём классам. Минимальный ориентир задания — 30–40 фотографий на класс; это не гарантия качества. Каждый из выбранных 3–4 видов продукта желательно представить во всех трёх состояниях.</p>
+<p><strong>Несколько ракурсов одного плода — одна группа.</strong> Используйте вложенную папку с уникальным ID образца:</p>
+<pre><code class="language-text">data/raw/FRESH/apple_001/front.jpg
+data/raw/FRESH/apple_001/back.jpg
+data/raw/MINOR_DEFECT/apple_002/front.jpg
+data/raw/SPOILED/tomato_003/front.jpg
+</code></pre>
+<p>Если тот же плод сфотографирован через несколько дней в другом состоянии, сохраняйте прежний ID папки в новом классе. <code>apple_001</code> во всех классах попадёт в одну часть выборки. Не называйте такую папку просто <code>apples</code>, если внутри множество независимых яблок.</p>
+<p>Альтернатива без вложенных папок: <code>apple_001__front.jpg</code>, <code>apple_001__back.jpg</code>. Префикс до <code>__</code> — ID образца. Одиночные фото можно класть прямо в папку класса.</p>
+<p>Для ручной разметки через окно сначала поместите неразмеченные снимки в отдельную папку, например <code>data/inbox</code>, затем:</p>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe main.py label --input data/inbox
+</code></pre>
+<p>В окне выбирайте класс и при необходимости указывайте ID плода. Оригиналы не удаляются: создаются копии в <code>data/raw</code>.</p>
+<p>Полные правила разметки, ограничения Kaggle-набора и предотвращение утечек описаны в <code>docs/DATASET_RU.md</code>.</p>
+<h2>6. Разделить данные</h2>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe main.py prepare
+.\.venv\Scripts\python.exe main.py audit
+</code></pre>
+<p>Получится:</p>
+<pre><code class="language-text">data/prepared/
+    train/FRESH/ ...
+    val/FRESH/ ...
+    test/FRESH/ ...
+    manifest.csv
+    split_summary.json
+</code></pre>
+<p>В каждой части присутствуют все три класса. Доли примерно 70/15/15; они могут отличаться, потому что целый плод нельзя делить между выборками. Точные дубликаты удаляются. Похожие, но не идентичные снимки автоматически не распознаются как один плод — для них важны корректные ID групп.</p>
+<p>После изменения исходных фотографий создавайте новую подготовленную папку, например:</p>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe main.py prepare --output data/prepared_v2
+</code></pre>
+<p>Исходные фото не удаляются и не перезаписываются.</p>
+<h2>7. Обучить модель</h2>
+<p>Стандартный запуск:</p>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe main.py train --epochs 25
+</code></pre>
+<p>При первом таком запуске torchvision скачает веса ImageNet, если их ещё нет в локальном кэше. Это веса общего распознавания изображений, а не готовая модель свежести. Затем программа заменит последний слой на три выхода и дообучит модель.</p>
+<p>Первые 3 эпохи обучается классификатор, остальные — также свёрточная часть. По умолчанию AdamW, batch size 16, разные learning rate для головы и основы, аугментации Albumentations, фиксированный seed 42. Лучшая модель выбирается по validation macro-F1; test для выбора модели не используется.</p>
+<p>На менее мощном компьютере:</p>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe main.py train --epochs 25 --batch-size 8 --threads 2
+</code></pre>
+<p>Явная альтернатива при проблемах с Albumentations: установите основные зависимости из <code>requirements-core.txt</code> (CPU-пара torch/torchvision — как выше) и выполните:</p>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe main.py train --epochs 25 --augmentations torchvision
+</code></pre>
+<p>Наборы преобразований близки по смыслу, но не идентичны. Выбранный движок записывается в конфигурацию опыта.</p>
+<p>После обучения:</p>
+<pre><code class="language-text">models/freshness/
+    best.pt
+    config.json
+    dataset_audit.json
+    history.csv
+    history.json
+    training_summary.json
+    training.html
+</code></pre>
+<p>Откройте <code>training.html</code>: там история, график accuracy и метрики лучшей validation-модели. Это <strong>не</strong> финальный test-результат.</p>
+<p>Для нового эксперимента используйте новую папку:</p>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe main.py train --output models/experiment_02 --epochs 30
+</code></pre>
+<p>Проект не перезаписывает непустые папки экспериментов и не реализует продолжение обучения с оптимизатором. После прерывания уже сохранённый <code>best.pt</code> остаётся пригодным для инференса.</p>
+<h2>8. Измерить качество на test и скорость CPU</h2>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe main.py evaluate
+.\.venv\Scripts\python.exe main.py benchmark --input data/prepared/test --repeats 100
+</code></pre>
+<p>В <code>outputs/test/report.html</code> находятся accuracy, macro-F1, метрики классов, матрица ошибок и таблица всех тестовых фото. Подписи на изображениях сохраняются для первых 15 тестовых примеров; JSON и строки таблицы — для всех.</p>
+<p><code>outputs/test/summary.json</code> содержит вычисленные флаги приёмки. Проект использует более строгую конкретизацию требования времени: <strong>P95 полного pipeline ≤ 200 мс на CPU</strong>. Pipeline включает чтение/декодирование, подготовку тензора, вызов модели и получение ответа. Не включает загрузку модели, прогрев, сохранение файлов и отрисовку GUI. Время модели отдельно тоже записывается.</p>
+<p><code>outputs/benchmark.json</code> показывает среднее, медиану и P95 по повторным измерениям. Повторное чтение может использовать файловый кэш ОС. Значения на вашем компьютере нужно измерить; они не зашиты в код.</p>
+<p>Test запускайте для итогового подтверждения, а не для подбора параметров после каждого изменения. Для подбора служит validation. Дополнительный интервал Уилсона в отчёте рассчитан по фотографиям при предположении независимых наблюдений; он не учитывает корреляцию ракурсов одного плода и ошибки разметки.</p>
+<h2>9. Пользоваться оконным приложением</h2>
+<p>Запустите <code>start_gui.bat</code> или:</p>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe main.py gui
+</code></pre>
+<p>Выберите <code>models/freshness/best.pt</code>, затем фотографию и нажмите «Распознать фото». Будут показаны класс, confidence и вероятности всех классов. Результат, JSON и отчёт сохраняются в отдельный каталог <code>outputs/gui/...</code>.</p>
+<p>Кнопка «Обработать папку» распознаёт несколько снимков. Флажок «Папка размечена по классам» включайте только для структуры с подкаталогами <code>FRESH</code>, <code>MINOR_DEFECT</code>, <code>SPOILED</code>. Тогда в отчёте появятся «Правильно» и «Ошибка». Без истинных меток программа не может честно определить правильность собственного ответа.</p>
+<p>В GUI реализованы распознавание и пакетная обработка. Обучение и оценка test запускаются из командной строки.</p>
+<h2>10. Демонстрация 10–15 фото и запуск без GUI</h2>
+<p>Разложите 10–15 новых размеченных фото в <code>data/demo/FRESH</code>, <code>data/demo/MINOR_DEFECT</code>, <code>data/demo/SPOILED</code>. Они не должны участвовать в обучении.</p>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe main.py predict --input data/demo --labeled --limit 15 --output outputs/demo
+</code></pre>
+<p>При лимите снимки выбираются попеременно из классов, а не только из первого по алфавиту. Откройте <code>outputs/demo/report.html</code>. Для защиты подготовлены таблица, JSON и изображения с подписями.</p>
+<p>Один файл:</p>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe main.py predict --input &quot;C:\Photos\apple.jpg&quot; --output outputs/single_01
+</code></pre>
+<p>Произвольная неразмеченная папка:</p>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe main.py predict --input &quot;C:\Photos\new_products&quot; --output outputs/batch_01
+</code></pre>
+<p>В каждом результате: <code>class</code>, <code>class_ru</code>, <code>confidence</code>, <code>probabilities</code>, <code>needs_review</code>, измеренные времена и SHA-256 файла модели. CSV записывается с UTF-8 BOM для Excel; разделитель — запятая. При необходимости используйте в Excel импорт «Из текста/CSV».</p>
+<h2>11. Работа без интернета</h2>
+<p>После установки зависимостей и обучения команды <code>predict</code>, <code>gui</code>, <code>evaluate</code>, <code>benchmark</code> и локальный API не скачивают модели. Веса для инференса читаются только из указанного <code>.pt</code>.</p>
+<p>Для обучения без сети заранее, пока интернет доступен, выполните:</p>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe main.py cache-weights
+</code></pre>
+<p>Затем передайте локальный файл явно:</p>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe main.py train --initial-weights models/imagenet_mobilenet_v3_small.pth
+</code></pre>
+<p>Для переноса на другой компьютер нужны исходники, установленная совместимая Python-среда и <code>best.pt</code>; для продолжения экспериментов также данные. Простое копирование <code>.venv</code> между разными компьютерами не рекомендуется.</p>
+<h2>12. Необязательный API</h2>
+<p>Этот раздел можно пропустить: весь основной функционал работает без сервера.</p>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe -m pip install -r requirements-api.txt
+.\.venv\Scripts\python.exe main.py serve
+</code></pre>
+<p>Откройте в браузере <code>http://127.0.0.1:8000</code>. Форма работает локально и не использует внешние CDN. Запрос: <code>POST /predict</code>, поле multipart <code>file</code>; ответ — JSON. <code>GET /health</code> проверяет готовность.</p>
+<p>Пример Windows:</p>
+<pre><code class="language-powershell">curl.exe -X POST -F &quot;file=@C:\Photos\apple.jpg&quot; http://127.0.0.1:8000/predict
+</code></pre>
+<p>Сервер привязан к 127.0.0.1. Не публикуйте его в интернете: аутентификация и производственная защита не входят в учебный проект. Остановка — Ctrl+C. Время в API-ответе не включает HTTP-передачу и декодирование файла; для приёмки используйте <code>benchmark</code>/<code>evaluate</code>.</p>
+<h2>13. Ограничения и важные уточнения</h2>
+<p>Модель оценивает <strong>визуальные признаки</strong>, а не пригодность пищи к употреблению. Она не измеряет запах, мягкость на ощупь, микробиологическую безопасность или скрытую порчу. Даже высокий confidence не гарантирует правильный ответ. На фото должен быть один отчётливо видимый продукт либо однородная группа; поиск объектов, сегментация и распознавание вида продукта не реализованы.</p>
+<p>Третий класс <code>MINOR_DEFECT</code> требует настоящей человеческой разметки. Нельзя заменить его случайными фото из rotten или просто искусственно размытыми изображениями.</p>
+<p>В формулировке задания «MobileNetV3-Small, ~2,5 МБ» неточность: стандартная ImageNet-модель имеет около 2,54 млн параметров и файл весов около 9,8 МБ по документации torchvision. После замены последнего слоя в этом проекте — 1 520 931 параметр и около 6,2 МБ для FP32-checkpoint с метаданными. Квантование до INT8 не реализовано; размер 2,5 МБ не обещается.</p>
+<p>Архив не содержит сторонних датасетов, библиотек, шрифтов или готового научного результата. Подробности реализации: <code>docs/METHOD_RU.md</code>; устранение ошибок: <code>docs/TROUBLESHOOTING_RU.md</code>; реально выполненные проверки и непроверенные режимы: <code>docs/TEST_REPORT_RU.md</code>.</p>
+<h2>14. Справка и исходники</h2>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe main.py --help
+.\.venv\Scripts\python.exe main.py train --help
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+</code></pre>
+<table>
+<thead>
+<tr>
+  <th>Файл</th>
+  <th>Назначение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><code>main.py</code>, <code>freshness/cli.py</code></td>
+  <td>Точка входа и аргументы</td>
+</tr>
+<tr>
+  <td><code>freshness/common.py</code></td>
+  <td>Изображения, нормализация, JSON/CSV</td>
+</tr>
+<tr>
+  <td><code>freshness/data.py</code></td>
+  <td>Группировка, разделение, проверка, аугментации</td>
+</tr>
+<tr>
+  <td><code>freshness/model.py</code></td>
+  <td>Архитектура и checkpoint</td>
+</tr>
+<tr>
+  <td><code>freshness/train.py</code></td>
+  <td>Дообучение</td>
+</tr>
+<tr>
+  <td><code>freshness/inference.py</code></td>
+  <td>Предсказание и подпись фото</td>
+</tr>
+<tr>
+  <td><code>freshness/metrics.py</code>, <code>freshness/evaluate.py</code></td>
+  <td>Метрики, test и benchmark</td>
+</tr>
+<tr>
+  <td><code>freshness/reports.py</code></td>
+  <td>Локальные HTML/CSV-отчёты</td>
+</tr>
+<tr>
+  <td><code>freshness/gui.py</code></td>
+  <td>Окно распознавания и ручная разметка</td>
+</tr>
+<tr>
+  <td><code>freshness/api.py</code></td>
+  <td>Необязательный HTTP API</td>
+</tr>
+<tr>
+  <td><code>freshness/smoke.py</code>, <code>tests/test_core.py</code></td>
+  <td>Технические проверки</td>
+</tr>
+</tbody>
+</table>
+<p>Официальные источники приведены в <code>docs/SOURCES.md</code>.</p>
+</section><section id="data"><h1>Данные, разметка и корректный эксперимент</h1>
+<h2>Что именно размечаем</h2>
+<p>В этой задаче метка относится к состоянию продукта, а не к его виду.</p>
+<table>
+<thead>
+<tr>
+  <th>Метка</th>
+  <th>Рабочее описание для НИР</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>FRESH</td>
+  <td>Нет явных видимых дефектов в пределах выбранных правил разметки</td>
+</tr>
+<tr>
+  <td>MINOR_DEFECT</td>
+  <td>Видимый небольшой локальный дефект, без выраженной плесени и обширного разрушения</td>
+</tr>
+<tr>
+  <td>SPOILED</td>
+  <td>Выраженные видимые признаки порчи, например плесень или обширное разрушение тканей</td>
+</tr>
+</tbody>
+</table>
+<p>Это учебные визуальные категории, а не заключение о безопасности еды. Желательно заранее согласовать границу MINOR_DEFECT/SPOILED с руководителем и сохранить правила разметки в отчёте. Потемнение банана, механическая царапина и плесень — разные явления; нельзя автоматически считать любое тёмное пятно одинаковой степенью порчи.</p>
+<p>Мягкость на ощупь и запах не видны непосредственно на фотографии. Если метка основана на этих свойствах, модель может не иметь достаточно визуальных данных для её воспроизведения.</p>
+<h2>Сколько нужно фотографий</h2>
+<p>В задании задан ориентир 30–40 фото на класс и 3–4 вида продуктов. Для старта это примерно 90–120 уникальных фото суммарно. Наличие такого числа кадров не гарантирует accuracy 75%. Важны независимые плоды, а не множество почти одинаковых снимков одного экземпляра.</p>
+<p>Постарайтесь представить каждый вид продукта во всех состояниях, а также разные фоны, освещение, положения и масштабы. Иначе модель может выучить вид продукта или фон вместо свежести. Отдельно подготовьте 10–15 новых фотографий для демонстрации.</p>
+<h2>Kaggle и третий класс</h2>
+<p>Набор из условия называется <strong>Fruits fresh and rotten for classification</strong>, автор Sriram Reddy Kalluri. Он ориентирован на fresh/rotten для яблок, бананов и апельсинов; не следует считать его готовым размеченным набором ровно для трёх стадий из задания.</p>
+<p>Карточка: <a href="https://www.kaggle.com/datasets/sriramr/fruits-fresh-and-rotten-for-classification">https://www.kaggle.com/datasets/sriramr/fruits-fresh-and-rotten-for-classification</a></p>
+<p>Порядок работы с внешним набором:</p>
+<ol>
+<li>Скачайте его самостоятельно через Kaggle и проверьте условия использования. Пароли и API-токены проекту не нужны.</li>
+<li>Просмотрите изображения. Для MINOR_DEFECT отберите и размечайте реальные подходящие случаи либо дополните набор собственными снимками.</li>
+<li>Не считайте «unripe», «ripe», «stale» или все изображения «rotten» автоматическими синонимами MINOR_DEFECT: это разные определения.</li>
+<li>Сгруппируйте готовые аугментации и похожие ракурсы по исходному изображению/плоду. При недоступных ID предпочитайте независимый собственный test.</li>
+<li>Поместите итоговую ручную разметку в <code>data/raw</code> и выполните <code>prepare</code>.</li>
+</ol>
+<p>Проект не скачивает Kaggle автоматически, не обходит авторизацию, не переименовывает исходные классы без проверки и не создаёт третий класс искусственным размытием.</p>
+<h2>Структура групп</h2>
+<p>Предпочтительный вариант:</p>
+<pre><code class="language-text">data/raw/
+    FRESH/
+        apple_001/
+            front.jpg
+            back.jpg
+        banana_002/
+            front.jpg
+    MINOR_DEFECT/
+        apple_003/
+            front.jpg
+    SPOILED/
+        banana_004/
+            front.jpg
+</code></pre>
+<p>Все имена первого уровня внутри папки класса трактуются как <strong>ID отдельных образцов</strong>, а не как категории вида продукта. Идентификатор общий для всех классов: если один и тот же apple_001 позже испортился, его новые снимки в другом классе остаются той же группой.</p>
+<p>В плоском варианте разделитель <code>__</code> отделяет ID группы: <code>apple_001__front.jpg</code>. Без вложенной папки и без <code>__</code> каждый файл считается независимым, кроме найденных точных дубликатов.</p>
+<h2>Как программа предотвращает утечки</h2>
+<p><code>prepare</code> читает фото с учётом EXIF, переводит в RGB и вычисляет SHA-256 декодированных пикселей. Полные совпадения одного класса объединяются. При одинаковой картинке с разными метками подготовка останавливается. Если одинаковые кадры связывают две группы, группы тоже объединяются.</p>
+<p>Сначала делятся группы, а уже внутри обучения на лету применяются аугментации. Все классы должны присутствовать в train, val и test. Для одного класса технически нужно не менее трёх независимых групп; этого недостаточно для содержательного исследования.</p>
+<p>Хеш не обнаруживает все почти одинаковые картинки: изменение JPEG-сжатия, небольшой поворот или иной ракурс меняют пиксели. Поэтому корректные ID групп остаются обязательными для серий снимков.</p>
+<p><code>manifest.csv</code> фиксирует относительный путь, часть выборки, класс, ID группы, хеш и исходный путь. <code>audit</code> проверяет наличие файлов, изменение пикселей, лишние файлы и пересечение групп между частями. <code>train</code> и <code>evaluate</code> вызывают аудит автоматически.</p>
+<h2>Что не делать</h2>
+<p>Не переносите тестовые фото в обучение после неудачного результата. Не подбирайте эпохи, аугментации или порог по test. Не выдавайте качество на искусственных картинках self-test за качество на продуктах. Не размечайте новый снимок предсказанием той же модели и затем не используйте его как независимое подтверждение её правильности.</p>
+<p>Параметры подбираются по validation. Итоговая модель оценивается на test. Демонстрационные фото служат показом работы и не заменяют нормальную тестовую выборку.</p>
+</section><section id="method"><h1>Как устроена программа</h1>
+<h2>1. Путь изображения</h2>
+<p><code>read_rgb()</code> открывает файл, применяет ориентацию EXIF и получает RGB-массив. Неподдерживаемые и повреждённые изображения вызывают понятную ошибку. Кириллические пути поддерживаются. Очень большие изображения ограничены 40 млн пикселей для защиты от случайного чрезмерного расхода памяти.</p>
+<p>OpenCV масштабирует фото до квадрата 224×224 с сохранением пропорций. Свободная область заполняется нейтральным серым. Вместо центрального обрезания выбран letterbox, чтобы не отрезать пятна на краях.</p>
+<p>Во время обучения применяются горизонтальный разворот, небольшие повороты, умеренные изменения яркости/контраста и редкое размытие. Для validation, test и реального инференса случайных преобразований нет. Во всех режимах используются одинаковые mean/std ImageNet: <code>(0.485, 0.456, 0.406)</code> и <code>(0.229, 0.224, 0.225)</code>.</p>
+<h2>2. Модель и обучение</h2>
+<p>Исходная архитектура — <code>torchvision.models.mobilenet_v3_small</code>. Оригинальный последний Linear со 1000 выходами заменяется на Linear с тремя выходами. Остальная структура сохраняется. Итоговое число обучаемых и временно замороженных параметров вместе — 1 520 931.</p>
+<p>По умолчанию используются веса <code>MobileNet_V3_Small_Weights.DEFAULT</code> из ImageNet. На первых трёх эпохах заморожена свёрточная часть, затем она тоже дообучается. Для небольших minibatch статистики BatchNorm по умолчанию фиксированы; это можно изменить <code>--train-batchnorm</code>.</p>
+<p>Оптимизатор AdamW: learning rate классификатора 0.001, свёрточной части 0.0001, weight decay 0.0001. Скорости плавно снижаются по косинусной схеме. CrossEntropyLoss получает исходные logits, а не уже вычисленный softmax. Веса классов рассчитываются только по train для уменьшения влияния дисбаланса. Градиенты ограничиваются по норме.</p>
+<p><code>seed=42</code> задаётся для Python, NumPy, PyTorch и Albumentations. DataLoader использует <code>num_workers=0</code>, что упрощает запуск Windows и воспроизводимость. Это не обещание побитно одинакового результата на разном оборудовании и разных версиях библиотек.</p>
+<h2>3. Выбор лучшей модели</h2>
+<p>После каждой эпохи выполняется validation. Критерий выбора — macro-F1, при равенстве accuracy, затем меньший loss. Test не используется для выбора checkpoint.</p>
+<p>Checkpoint содержит <code>state_dict</code>, порядок классов, настройки предобработки, параметры обучения, версии PyTorch/torchvision, validation-метрики и fingerprint подготовленного датасета. Обучение сохраняет только веса для инференса, а не полный optimizer state; продолжение прерванного обучения с тем же состоянием оптимизатора не реализовано.</p>
+<p>При загрузке проверяются версия формата, архитектура, классы и предобработка. Используется <code>torch.load(..., weights_only=True)</code>. Загружайте только доверенные файлы моделей: этот параметр не делает любой посторонний файл безопасным.</p>
+<h2>4. Результат распознавания</h2>
+<p>Модель возвращает три logits. Из них вычисляется softmax; класс соответствует максимуму, confidence — его значению. Сумма трёх оценок примерно равна 1.</p>
+<p>Высокий softmax сам по себе не доказывает правильность. Калибровка вероятностей и полноценное обнаружение неизвестных объектов в проект не включены. Порог ручной проверки 0.65 — настраиваемый вспомогательный параметр, не подтверждённый универсальный порог качества.</p>
+<p>Фото стула или неизвестного вида продукта тоже получит один из трёх классов. Программа не является детектором «фрукт/не фрукт». Пользователь должен соблюдать область применения модели.</p>
+<h2>5. Метрики и измерение времени</h2>
+<p>Accuracy — доля правильных предсказаний. Precision показывает долю верных ответов среди предсказаний класса, recall — найденную долю истинных объектов класса. F1 объединяет precision и recall. Macro-F1 усредняет F1 трёх классов, не отдавая автоматически преимущество многочисленному классу.</p>
+<p>В матрице ошибок строки соответствуют истинному классу, столбцы — предсказанному. Основные критерии задания проверяются по accuracy на test и скорости CPU. Дополнительные метрики помогают увидеть, например, систематическое смешение MINOR_DEFECT и SPOILED.</p>
+<p>Измерения идут с <code>eval()</code> и <code>torch.inference_mode()</code>, после прогрева, с batch size 1. Отдельно фиксируются чтение, подготовка, модель и полный pipeline. Итоговый порог — P95 pipeline ≤ 200 мс. Загрузка checkpoint, прогрев и запись подписанных файлов в этот показатель не входят.</p>
+<h2>6. Сохранение и интерфейсы</h2>
+<p>Для каждого фото сохраняется JSON. Для партии — общий JSON, CSV и автономный HTML. Подписи рисуются Pillow; используются встроенные символы и английские имена классов, поэтому проект не раздаёт сторонние шрифты.</p>
+<p>Tkinter-интерфейс выполняет длительную обработку в рабочем потоке, а обновления виджетов — в основном потоке через очередь. API по умолчанию доступен только на localhost и использует ту же модель и предобработку.</p>
+<p>Главное ограничение остаётся содержательным: распознаются видимые признаки в пределах обучающего распределения, а не санитарная пригодность продукта.</p>
+</section><section id="problems"><h1>Частые проблемы</h1>
+<h2>Нет Python или команда py не найдена</h2>
+<p>Установите полный обычный Python 3.13 x64 с Python Launcher, pip и Tcl/Tk. После установки заново откройте PowerShell. Проверка: <code>py -3.13 --version</code>.</p>
+<p>Если уже используете другой обычный Python 3.11/3.12, создайте <code>.venv</code> вручную этим интерпретатором, затем выполните команды установки из README. <code>.bat</code> выбирает именно Python 3.13.</p>
+<p>Не используйте 32-разрядный, embeddable или free-threaded вариант для этой инструкции.</p>
+<h2>PowerShell блокирует Activate.ps1</h2>
+<p>Активация не требуется. Все команды в README обращаются к <code>.\.venv\Scripts\python.exe</code> напрямую. Менять ExecutionPolicy не нужно.</p>
+<h2>ModuleNotFoundError</h2>
+<p>Устанавливайте зависимости тем же Python, которым запускаете проект:</p>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+</code></pre>
+<p>Для сервера API отдельно установите <code>requirements-api.txt</code>. Сам API не нужен для оконного приложения.</p>
+<h2>Ошибка torchvision, несовместимый torch или operator torchvision::nms does not exist</h2>
+<p>Используйте согласованную пару torch 2.10.0 / torchvision 0.25.0 и одинаковый тип сборки. В изолированной среде проекта переустановите оба CPU-пакета:</p>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe -m pip install --force-reinstall torch==2.10.0 torchvision==0.25.0 --index-url https://download.pytorch.org/whl/cpu
+.\.venv\Scripts\python.exe main.py doctor
+</code></pre>
+<p>Это инструкция для CPU-варианта, не для сохранения собственной GPU-среды.</p>
+<h2>Albumentations не установилась</h2>
+<p>Сначала прочитайте фактическую ошибку pip: причина может быть в сети или неподходящем Python. Проект также поддерживает явную альтернативу:</p>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe -m pip install -r requirements-core.txt
+.\.venv\Scripts\python.exe main.py train --augmentations torchvision
+</code></pre>
+<p>Для этого режима достаточно <code>requirements-core.txt</code>; CPU-пара torch/torchvision устанавливается как в README. Все основные преобразования предусмотрены и в этом режиме. Для стандартного варианта задания установите Albumentations и используйте режим по умолчанию. В поставке CPU-тесты выполнены с torchvision; Albumentations в среде проверки недоступна.</p>
+<h2>Нет models/freshness/best.pt</h2>
+<p>Это нормально до первого обучения. Последовательность: настоящие фото → <code>prepare</code> → <code>train</code> → <code>evaluate</code>/<code>gui</code>. В архиве нет готовой модели свежести.</p>
+<p>Файл ImageNet <code>.pth</code> не подходит для GUI: это инициализация обучения, а не трёхклассовый checkpoint проекта. Модель self-test предназначена только для проверки программы.</p>
+<h2>Empty class / неизвестные папки классов</h2>
+<p>Нужны ровно <code>FRESH</code>, <code>MINOR_DEFECT</code>, <code>SPOILED</code>, с тем же регистром и подчёркиванием. В каждой должны быть изображения. Каталоги <code>freshapples</code> и <code>rottenbanana</code> не являются нужной структурой и не содержат автоматически третью стадию.</p>
+<h2>Не хватает независимых групп</h2>
+<p>Не менее трёх групп на класс нужны технически для train/val/test. Для исследования нужно существенно больше. Десятки фото одного плода не заменяют независимые образцы.</p>
+<p>Если все яблоки лежат в папке <code>FRESH/apples</code>, она трактуется как один образец. Разнесите по уникальным ID: <code>apple_001</code>, <code>apple_002</code> и т.д.</p>
+<h2>Папка уже содержит файлы</h2>
+<p>Программа специально не удаляет предыдущие результаты. Укажите новую папку <code>--output</code>, например <code>outputs/demo_02</code> или <code>models/experiment_02</code>. Для нового prepared-набора не забывайте передать его путь в последующие <code>train</code> и <code>evaluate</code>.</p>
+<h2>Manifest не совпадает / изображение изменено</h2>
+<p>После подготовки нельзя вручную менять картинки в <code>data/prepared</code>. Исправьте исходный <code>data/raw</code> и выполните <code>prepare</code> в новую папку. Затем обучите соответствующую модель. Для новых независимых демонстрационных снимков используйте <code>predict --labeled</code>, а не подменяйте исходный test.</p>
+<h2>Обучение медленное или не хватает RAM</h2>
+<p>Уменьшите <code>--batch-size</code> до 8 или 4. Для inference/benchmark сравните <code>--threads 1</code>, <code>2</code>, <code>4</code>; больше потоков не обязательно быстрее. GPU не требуется. Для CUDA нужны подходящие GPU-драйверы и CUDA-сборка PyTorch, после чего можно использовать <code>train --device cuda</code>; стандартный установщик ставит CPU-сборку.</p>
+<h2>Accuracy ниже 75%</h2>
+<p>Не меняйте числа в отчёте. Проверьте качество разметки, достаточность независимых плодов, баланс классов и представленность видов продукта во всех состояниях. Посмотрите матрицу ошибок на validation. Подбирайте параметры по validation, а test сохраняйте для итоговой проверки.</p>
+<p>При маленьком наборе ошибка даже на нескольких снимках сильно меняет accuracy. Высокая оценка на похожих фотографиях одного плода не означает хорошего качества на новых продуктах.</p>
+<h2>GUI не запускается / No module named tkinter</h2>
+<p>Для полного Python Windows включите компонент Tcl/Tk. Проверка:</p>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe -m tkinter
+</code></pre>
+<p>В Linux GUI требует установленного tkinter и графической сессии. CLI, обучение и отчёты могут использоваться без окна.</p>
+<h2>CSV открывается одной колонкой</h2>
+<p>В Excel используйте импорт «Из текста/CSV», UTF-8, разделитель «запятая». Или откройте <code>report.html</code> — Excel вообще не нужен.</p>
+<h2>Полный текст ошибки</h2>
+<p>Укажите <code>--debug</code> перед названием команды:</p>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe main.py --debug train --epochs 25
+</code></pre>
+<p>Ошибка прерывает команду с ненулевым кодом завершения. Уже сохранённые файлы автоматически не удаляются.</p>
+</section><section id="tests"><h1>Протокол технической проверки</h1>
+<p>Дата: 13 ноября 2026 года.</p>
+<h2>Что проверено реально</h2>
+<table>
+<thead>
+<tr>
+  <th>Проверка</th>
+  <th>Результат</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>Синтаксис Python-модулей</td>
+  <td>Успешно</td>
+</tr>
+<tr>
+  <td>Автоматические unit-тесты</td>
+  <td>23 пройдены; 1 дополнительный тест Albumentations пропущен</td>
+</tr>
+<tr>
+  <td>Подготовка искусственного набора, группировка, manifest</td>
+  <td>Успешно: 36 картинок, 18 групп</td>
+</tr>
+<tr>
+  <td>Обучение на CPU</td>
+  <td>2 эпохи: голова, затем fine-tune</td>
+</tr>
+<tr>
+  <td>Сохранение и повторная загрузка best.pt</td>
+  <td>Успешно</td>
+</tr>
+<tr>
+  <td>Инференс с запретом создания сетевого socket</td>
+  <td>Успешно</td>
+</tr>
+<tr>
+  <td>Загрузка локального state_dict для инициализации</td>
+  <td>Успешно; тестовый state_dict, не ImageNet-качество</td>
+</tr>
+<tr>
+  <td>JSON, CSV, HTML, матрица ошибок, изображения с подписями</td>
+  <td>Созданы и проверены</td>
+</tr>
+<tr>
+  <td>Предсказание через окно Tkinter</td>
+  <td>Успешно в Linux/Xvfb</td>
+</tr>
+<tr>
+  <td>Ручная разметка через окно</td>
+  <td>Фото скопировано в выбранный класс и группу</td>
+</tr>
+<tr>
+  <td>FastAPI</td>
+  <td>Проверены health, автономная форма, корректное фото, ошибка на повреждённом файле</td>
+</tr>
+<tr>
+  <td>Отчёты HTML</td>
+  <td>Проверена отрисовка Chromium, наличие таблиц и изображений</td>
+</tr>
+<tr>
+  <td>Защита от выдачи smoke-test за исследование</td>
+  <td><code>overall_pass=False</code> независимо от технической скорости</td>
+</tr>
+</tbody>
+</table>
+<p>При визуальной проверке отчётов использовалась проверочная копия HTML с изображениями, встроенными в память браузера: политика тестового Chromium запрещает <code>file://</code>. Существование относительных путей к исходным файлам проверено отдельно. Выходные HTML проекта остаются обычными локальными файлами.</p>
+<h2>Измерения исключительно для технического теста</h2>
+<p>CPU, batch=1, PyTorch threads=2, искусственные изображения 176×128:</p>
+<ul>
+<li>Среднее полное время pipeline: 8.82 мс.</li>
+<li>P95 pipeline: 11.63 мс.</li>
+<li>Размер тестового FP32-checkpoint: 6,206,039 байт.</li>
+<li>Это <strong>не</strong> замер реальных фотографий пользователя и <strong>не</strong> обещание скорости на другом компьютере.</li>
+<li>Accuracy на этих искусственных данных не используется для подтверждения задания.</li>
+</ul>
+<h2>Среда</h2>
+<p>Linux x86_64; CPython 3.13.5; torch 2.10.0+cpu; torchvision 0.25.0+cpu;
+NumPy 2.3.5; Pillow 12.3.0; opencv-python-headless 4.13.0.92.
+Необязательный API проверен с FastAPI 0.128.2, Uvicorn 0.48.0 и python-multipart 0.0.29.</p>
+<h2>Что не проверено и не заявляется</h2>
+<p><strong>Реальное качество трёхклассового распознавания не измерено.</strong> Пользователь не предоставил размеченный датасет. В поставке нет модели, дообученной на настоящих продуктах; утверждения о достигнутой accuracy ≥ 75% нет.</p>
+<p><strong>Режим Albumentations не выполнен в среде проверки.</strong> Пакет отсутствовал, его установка оказалась недоступна из-за сетевых ограничений среды. Реализован режим Albumentations 2.0.8 с параметрами из документации; в тестах использован явный режим torchvision. В наборе тестов есть дополнительная проверка Albumentations, которая выполнится при установленном пакете.</p>
+<p><strong>Скачивание официальных весов ImageNet здесь не выполнялось.</strong> Код использует стандартный интерфейс torchvision с проверкой хеша при скачивании. Отдельно проверена ветка загрузки локальной инициализации и замены последнего слоя.</p>
+<p><strong>Windows, GPU/CUDA и конкретный компьютер пользователя не тестировались.</strong> Оконный интерфейс проверен в графической сессии Linux/Xvfb. Windows-скрипты и инструкция подготовлены, но не выданы за фактически выполненную установку Windows.</p>
+<h2>Как воспроизвести</h2>
+<p>Из папки проекта:</p>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe main.py self-test --output outputs/self_test_new
+.\.venv\Scripts\python.exe main.py self-test --augmentations albumentations --output outputs/self_test_albumentations
+</code></pre>
+<p>Подробный лог unit-тестов приложен в <code>docs/validation/unit_tests.txt</code>; сводка сквозной проверки — в <code>docs/validation/self_test_result.json</code>. Тестовый checkpoint и искусственные картинки не включены в архив, чтобы их не спутали с результатом НИР. Команда <code>self-test</code> воссоздаёт их локально.</p>
+</section><section id="sources"><h1>Официальные источники и происхождение компонентов</h1>
+<p>Проверено при подготовке проекта: 13 ноября 2026 года. Используются не обязательно самые новые версии, а явно согласованная пара PyTorch/torchvision и описанные в requirements диапазоны остальных пакетов.</p>
+<ol>
+<li>PyTorch: совместимые версии 2.10.0 / torchvision 0.25.0 и CPU-установка:
+<a href="https://pytorch.org/get-started/previous-versions/">https://pytorch.org/get-started/previous-versions/</a></li>
+<li>Torchvision: MobileNetV3-Small, ImageNet-веса, нормализация, число параметров и размер исходного файла:
+<a href="https://docs.pytorch.org/vision/stable/models/generated/torchvision.models.mobilenet_v3_small.html">https://docs.pytorch.org/vision/stable/models/generated/torchvision.models.mobilenet_v3_small.html</a></li>
+<li>Исходная реализация MobileNetV3 в torchvision:
+<a href="https://github.com/pytorch/vision/blob/main/torchvision/models/mobilenetv3.py">https://github.com/pytorch/vision/blob/main/torchvision/models/mobilenetv3.py</a></li>
+<li>Albumentations 2.0.8, описание релиза:
+<a href="https://pypi.org/project/albumentations/2.0.8/">https://pypi.org/project/albumentations/2.0.8/</a></li>
+<li>Albumentations: воспроизводимость и собственный seed Compose:
+<a href="https://albumentations.ai/docs/faq/">https://albumentations.ai/docs/faq/</a></li>
+<li>CPython 3.13: установка Windows, pip, launcher, Tcl/Tk:
+<a href="https://docs.python.org/3.13/using/windows.html">https://docs.python.org/3.13/using/windows.html</a></li>
+<li>Tkinter:
+<a href="https://docs.python.org/3/library/tkinter.html">https://docs.python.org/3/library/tkinter.html</a></li>
+<li>Карточка набора из задания:
+<a href="https://www.kaggle.com/datasets/sriramr/fruits-fresh-and-rotten-for-classification">https://www.kaggle.com/datasets/sriramr/fruits-fresh-and-rotten-for-classification</a></li>
+<li>Запись автора набора в Zenodo:
+<a href="https://zenodo.org/records/4788775">https://zenodo.org/records/4788775</a></li>
+</ol>
+<p>Фото из внешнего набора и веса ImageNet в архиве проекта не распространяются. Пользователь самостоятельно проверяет условия использования источников и соблюдает лицензии установленных библиотек. Внешние материалы не следует автоматически считать свободными от ограничений только потому, что они доступны для скачивания.</p>
+</section></article></div>
+<footer>Freshness NIR · 13 ноября 2026 · руководство читается без интернета; внешние ссылки нужны только для обращения к источникам.</footer>
+</body></html>

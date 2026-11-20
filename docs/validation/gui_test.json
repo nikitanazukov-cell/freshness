@@ -1,0 +1,9 @@
+{
+  "status": "PASSED",
+  "checks": [
+    "window_creation",
+    "async_prediction",
+    "results_saved",
+    "label_copy"
+  ]
+}
